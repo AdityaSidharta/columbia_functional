@@ -204,27 +204,10 @@ multDigit x y = multWithCarry x y 0
 
 -}
 multDigits :: [Word8] -> [Word8] -> [Word8]
-multDigits [] _ = []
-multDigits _ [] = []
-
-
-
-
-
--- addDigits x y = addWithCarry x y 0
---       where addWithCarry [] [] 0 = []
---             addWithCarry [] [] c = [c]
---             addWithCarry (x:xs) [] c = ((x + c) `rem` 100) : addWithCarry xs [] ((x + c) `quot` 100)
---             addWithCarry [] (y:ys) c = ((y + c) `rem` 100) : addWithCarry [] ys ((y + c) `quot` 100)
---             addWithCarry (x:xs) (y:ys) c = ((x + y + c) `rem` 100) : addWithCarry xs ys ((x + y + c) `quot` 100)
-
-
--- addDigits x y = addWithCarry x y 0
---       where addWithCarry [] [] 0 = []
---             addWithCarry [] [] c = [c]
---             addWithCarry (x:xs) [] c = ((x + c) `rem` 100) : addWithCarry xs [] ((x + c) `quot` 100)
---             addWithCarry [] (y:ys) c = ((y + c) `rem` 100) : addWithCarry [] ys ((y + c) `quot` 100)
---             addWithCarry (x:xs) (y:ys) c = ((x + y + c) `rem` 100) : addWithCarry xs ys ((x + y + c) `quot` 100)
+multDigits x y = foldl1 addDigits (zipWith (++) ([replicate x 0 | x <- [0..]]) (listDigits x y))
+      where listDigits [] _ = []
+            listDigits _ [] = []
+            listDigits (x:xs) y = multDigit x y : listDigits xs y
 
 
 
@@ -245,7 +228,13 @@ multDigits _ [] = []
       compare100 [99,98,5] [98,99,5] = LT
 -}
 compare100 :: [Word8] -> [Word8] -> Ordering
-compare100 _ _ = EQ
+compare100 x y = compareReverse (reverse x) (reverse y)
+      where compareReverse [] [] = EQ
+            compareReverse _ [] = GT
+            compareReverse [] _ = LT
+            compareReverse (x:xs) (y:ys) | x > y = GT
+                                         | x < y = LT
+                                         | otherwise = compareReverse xs ys
 
 {- 8) Write an instance of the Num type class for Int100.
       Include implementations of fromInteger, +, *, signum, abs,
@@ -281,11 +270,42 @@ compare100 _ _ = EQ
 -}
 instance Num Int100 where
    fromInteger = toInt100
-   _ + _ = IntZ -- Change this
-   _ * _ = IntZ -- Change this
-   signum _ = IntZ -- Change this
-   negate _ = IntZ -- Change this
-   abs _ = IntZ -- Change this
+
+   IntP x + IntP y = IntP (addDigits x y)
+   IntP x + IntN y | compare100 x y == LT = IntN (subDigits y x)
+                   | compare100 x y == EQ = IntZ
+                   | otherwise = IntP (subDigits x y)
+   IntP x + IntZ = IntP x
+   IntN x + IntP y | compare100 x y == GT = IntN (subDigits x y)
+                   | compare100 x y == EQ = IntZ
+                   | otherwise = IntP (subDigits y x)
+   IntN x + IntN y = IntN (addDigits x y)
+   IntN x + IntZ = IntN x
+   IntZ + IntP y = IntP y
+   IntZ + IntN y = IntN y
+   IntZ + IntZ = IntZ
+   
+   IntP x * IntP y = IntP (multDigits x y)
+   IntP x * IntN y = IntN (multDigits x y)
+   IntP _ * IntZ = IntZ
+   IntN x * IntP y = IntN (multDigits x y)
+   IntN x * IntN y = IntP (multDigits x y)
+   IntN _ * IntZ = IntZ
+   IntZ * IntP _ = IntZ
+   IntZ * IntN y_ = IntZ
+   IntZ * IntZ = IntZ
+
+   signum IntZ = 0
+   signum (IntP _) = 1
+   signum (IntN _) = -1
+
+   negate IntZ = IntZ
+   negate (IntP x) = IntN x
+   negate (IntN x) = IntP x
+   
+   abs IntZ = IntZ 
+   abs (IntP x) = IntP x
+   abs (IntN x) = IntP x
 
 {- 9) Write an instance of the Ord type class for Int100.
       in particular, write an implementation of the compare
@@ -303,7 +323,15 @@ instance Num Int100 where
 
 -}
 instance Ord Int100 where
-  _ `compare` _ = EQ -- Change this
+  IntP x `compare` IntP y = compare100 x y
+  IntP _ `compare` IntZ = GT
+  IntP _ `compare` IntN _ = GT
+  IntZ `compare` IntP _ = LT
+  IntZ `compare` IntZ = EQ
+  IntZ `compare` IntN _ = GT
+  IntN _ `compare` IntP _ = LT
+  IntN _ `compare` IntZ = LT
+  IntN x `compare` IntN y = compare100 x y
 
 {- 10) Implement the Functor type classes for the BHeap and BTree types.
 
@@ -315,7 +343,8 @@ data BHeap a = BHeap [BTree a] deriving (Eq, Show, Read)
 data BTree a = BNode Int a (BHeap a) deriving (Eq, Show, Read)
 
 instance Functor BHeap where
-  fmap _ _ = error "" -- Change this
+  fmap f (BHeap []) = BHeap []
+  fmap f (BHeap x) = BHeap (fmap f x)-- Change this
 
 instance Functor BTree where
-  fmap _ _ = error "" -- Change this
+  fmap f (BNode) = B -- Change this
