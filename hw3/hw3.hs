@@ -83,14 +83,13 @@ data Int100 = IntP [Word8]
       toInt100 99 = IntP [99]
       toInt100 100 = IntP [0,1]
       toInt100 (-199) = IntN [99,1]
---  -}
+ -}
 toInt100 :: Integer -> Int100
 toInt100 x | x == 0 = IntZ
            | x > 0 = IntP (getVal x)
            | otherwise = IntN (getVal (-x))
        where getVal x | x <= 99 = [fromIntegral x]
                      | otherwise = let (q, r) = x `quotRem` 100 in fromIntegral r : getVal q
-
 
 {- 2) Write an instance of Show (just the show function)
       for the Int100 type.  You may assume the Int100 object
@@ -168,7 +167,6 @@ subDigits x y = let result = subWithBorrow x y 0 in reverse(dropWhile (==0) (rev
                                           | otherwise = (x - y - c) : subWithBorrow xs ys 0
             subWithBorrow _ _ _ = error "y should not be bigger than x"
 
-
 {- 5) Write a function multDigit that multiplies a positive base-100 integer
       by an integer in the range [0..99].  Assume the last element of the
       base-100 list is non-zero and that the input integer is in the range
@@ -189,7 +187,6 @@ multDigit x y = multWithCarry x y 0
             multWithCarry x (y:ys) c = let result = toInteger x * toInteger y + toInteger c
                                        in fromIntegral(result `rem` 100) : multWithCarry x ys (fromIntegral(result `quot` 100))
 
-
 {- 6) Write a function multDigits that multiplies two positive base-100
       integers.  You may use multDigit and addDigits.
 
@@ -208,8 +205,6 @@ multDigits x y = foldl1 addDigits (zipWith (++) ([replicate x 0 | x <- [0..]]) (
       where listDigits [] _ = []
             listDigits _ [] = []
             listDigits (x:xs) y = multDigit x y : listDigits xs y
-
-
 
 {- 7) Write a function compare100 that compares the magnitude of the
       two base-100 numbers given to it.
@@ -270,7 +265,6 @@ compare100 x y = compareReverse (reverse x) (reverse y)
 -}
 instance Num Int100 where
    fromInteger = toInt100
-
    IntP x + IntP y = IntP (addDigits x y)
    IntP x + IntN y | compare100 x y == LT = IntN (subDigits y x)
                    | compare100 x y == EQ = IntZ
@@ -284,7 +278,7 @@ instance Num Int100 where
    IntZ + IntP y = IntP y
    IntZ + IntN y = IntN y
    IntZ + IntZ = IntZ
-   
+
    IntP x * IntP y = IntP (multDigits x y)
    IntP x * IntN y = IntN (multDigits x y)
    IntP _ * IntZ = IntZ
@@ -302,8 +296,8 @@ instance Num Int100 where
    negate IntZ = IntZ
    negate (IntP x) = IntN x
    negate (IntN x) = IntP x
-   
-   abs IntZ = IntZ 
+
+   abs IntZ = IntZ
    abs (IntP x) = IntP x
    abs (IntN x) = IntP x
 
@@ -344,7 +338,7 @@ data BTree a = BNode Int a (BHeap a) deriving (Eq, Show, Read)
 
 instance Functor BHeap where
   fmap f (BHeap []) = BHeap []
-  fmap f (BHeap x) = BHeap (fmap f x)-- Change this
+  fmap f (BHeap [x]) = BHeap [fmap f x]
 
 instance Functor BTree where
-  fmap f (BNode) = B -- Change this
+  fmap f (BNode x y (BHeap z)) = BNode x (f y) (fmap f (BHeap z))
