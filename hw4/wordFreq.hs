@@ -2,7 +2,7 @@ import System.Environment ( getArgs, getProgName )
 import Data.Map (fromListWith, toList)
 import Data.List ( sortBy )
 import System.Exit ( die )
-import Data.Char ( isLower, isSpace, toLower )
+import Data.Char ( isLower, isSpace, toLower, isAlphaNum )
 {-
 
 Problem 1: Word Frequency Counter
@@ -86,7 +86,7 @@ $ ./wordFreq 100-0.txt
 -}
 
 toWords :: String -> [String]
-toWords x = words (filter (\y -> isLower y || isSpace y) (map toLower x))
+toWords x = words (filter (\y -> isAlphaNum y || isSpace y) (map toLower x))
 
 countSort :: (Ord a1, Ord a2, Num a1) => [a2] -> [(a2, a1)]
 countSort x = sortBy (flip (\(_, a) (_, b) -> compare a b)) (toList(fromListWith (+) (map (\y -> (y, 1)) x)))
@@ -98,9 +98,8 @@ prettyPrint = map (\(x, y) -> show y ++ " " ++ x)
 main :: IO ()
 main = do
    args <- getArgs
-   progName <- getProgName
    filename <- case args of
     [p] -> return p
-    _ -> die $ progName ++ ": Wrong Number of Arguments"
+    _ -> die "Usage: wordFreq <filename>"
    contents <- readFile filename
    mapM_ putStrLn (take 40 (prettyPrint $ countSort $ toWords contents))

@@ -1,3 +1,11 @@
+import System.Environment ( getArgs, getProgName )
+import Data.Map (fromListWith, toList)
+import Data.List ( sortBy )
+import System.Exit ( die )
+import Data.Char ( isLower, isSpace, toLower, isAlphaNum )
+import Data.Set (fromList, delete, toList, filter, map, take)
+import qualified Data.Set as Data.Set.Internal
+
 {-
 
 Problem 2: Word Ladder
@@ -68,6 +76,34 @@ System.Environment, Data.Set, Control.Monad, and Data.List.
 
 -}
 
+data Node = Node String [Node] deriving (Show, Eq)
+
+toWordDict :: [Char] -> Int -> Data.Set.Internal.Set [Char]
+toWordDict x n = Data.Set.fromList (Prelude.filter (\y -> length y == n) (words (Prelude.filter (\y -> isAlphaNum y || isSpace y) (Prelude.map toLower x))))
+
+stringIsLower :: Foldable t => t Char -> Bool
+stringIsLower = all isLower
+
+isNeighbours :: Eq a => [a] -> [a] -> Bool
+isNeighbours [] [] = False
+isNeighbours [] _ = False
+isNeighbours _ [] = False
+isNeighbours (x:xs) (y:ys) | x /= y = xs == ys
+                           | otherwise = isNeighbours xs ys
+
+searchNeighbours :: Eq a => [a] -> Data.Set.Internal.Set [a] -> [[a]]
+searchNeighbours x wordDict = Data.Set.toList(Data.Set.filter (\y -> isNeighbours x y) wordDict)
+
+graph :: Data.Set.Internal.Set String -> [Char] -> Node
+graph wordDict x = Node x (Prelude.map (graph (Data.Set.delete x wordDict)) (searchNeighbours x wordDict))
+
+
 main :: IO ()
 main = do
-  putStrLn "Write your code here"
+  args <- getArgs
+  (fileName, fromWord, toWord) <- case args of
+    [x, y ,z] | stringIsLower y && stringIsLower z -> return (x,y,z)
+    [x, y ,z] | otherwise -> die "Usage: wordLadder <dictionary-filename> <from-word> <to-word>"
+    _ -> die "Usage: wordLadder <dictionary-filename> <from-word> <to-word>"
+  contents <- readFile fileName
+  print (graph(Data.Set.take 40 (toWordDict contents (length fromWord))) "abc")
