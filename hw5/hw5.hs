@@ -1,7 +1,8 @@
 module Submission where
-import Control.Monad(MonadPlus) -- guard
-import System.IO(Handle, hGetLine) -- hIsEOF, hGetLine, withFile, IOMode(ReadMode)
+import Control.Monad(MonadPlus)
+import System.IO(Handle, hGetLine, withFile, IOMode (ReadMode), hIsEOF) -- hIsEOF, hGetLine, withFile, IOMode(ReadMode)
 import Data.List(intercalate)
+import Control.Monad.State ( guard )
 
 {-
 
@@ -104,7 +105,7 @@ instance Applicative Tree where
   pure = Leaf
   Leaf f <*> m = fmap f m
   Branch x y <*> Leaf z = Branch (fmap ($z) x) (fmap ($z) y)
-  Branch a b <*> Branch x y = Branch (a <*> x) (b <*> y)
+  Branch a b <*> Branch x y = Branch (Branch (a <*> x) (b <*> x)) (Branch (a <*> y) (b <*> y))
 
 {-
   Monads, and in particular the List being used as a MonadPlus, can be
@@ -189,7 +190,7 @@ ghci> getItem stdin
 -}
 getProduct :: Handle -> IO Product
 getProduct x = do y <- fmap words (hGetLine x)
-                  return Product {pProdID = read (head y), 
+                  return Product {pProdID = read (head y),
                                   pName = y !! 1,
                                   pPrice = read (y !! 2)}
 
@@ -252,7 +253,19 @@ ghci> readItemTable >>= mapM_ print
 
 -}
 readTableFile :: String -> (Handle -> IO a) -> IO [a]
-readTableFile filename f = do x <- readFile filename
+readTableFile filename f = withFile filename ReadMode $ \handle -> parse handle f
+
+parse :: Handle -> (Handle -> IO a) -> IO [a]
+parse handle f = do
+                  end <- hIsEOF handle
+                  if end
+                      then
+                          return []
+                      else
+                          do
+                              info <- f handle
+                              rest <- parse handle f
+                              return (info: rest)
 
 -- These helper functions help to read in the various tables;
 -- please do not modify them
@@ -292,7 +305,8 @@ Kiwi
 
 -}
 selectName :: Monad m => m Product -> m String
-selectName = error "replace with your own solution"
+selectName x =
+                pName <$> x
 
 {- 8) Write custByDate, a join function that returns a date/customer name
       pair if a Sale row and a Customer row have the same customer ID.
@@ -318,7 +332,11 @@ ghci> mapM_ print $ custByDate salesTable custTable
 
 -}
 custByDate :: MonadPlus m => m Sale -> m Customer -> m (String, String)
-custByDate _ _ = error "replace with your own solution"
+custByDate x y = do
+                  infox <- x
+                  infoy <- y
+                  guard (sCustID infox == cCustID infoy)
+                  return (sDate infox, cName infoy)
 
 {- 9) Write billsOnDate, a multi-way join that returns the amount of
       money charged to each customer for each product sold in a given date.
@@ -342,4 +360,10 @@ ghci> mapM_ print $ billsOnDate saleTable custTable itemTable prodTable "3/8"
 billsOnDate :: MonadPlus m
                => m Sale -> m Customer -> m Item -> m Product -> String
                -> m (String, String, Int)
-billsOnDate _ _ _ _ _ = error "replace with your own solution"
+billsOnDate s c i p d = do
+                          infos <- s
+                          infoc <- c
+                          infoi <- i
+                          infop <- p
+                          guard ((iProdID infoi == pProdID infop) && (iSaleID infoi == sSaleID infos) && (sCustID infos == cCustID infoc) && (sDate infos == d))
+                          return (cName infoc, pName infop, pPrice infop * iQuantity infoi)
