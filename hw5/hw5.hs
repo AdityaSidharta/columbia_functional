@@ -1,7 +1,6 @@
 module Submission where
 import Control.Monad(MonadPlus)
-import System.IO(Handle, hGetLine, withFile, IOMode (ReadMode), hIsEOF) -- hIsEOF, hGetLine, withFile, IOMode(ReadMode)
-import Data.List(intercalate)
+import System.IO(Handle, hGetLine, withFile, IOMode (ReadMode), hIsEOF)
 import Control.Monad.State ( guard )
 
 {-
